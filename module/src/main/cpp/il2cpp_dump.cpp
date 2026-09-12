@@ -16,6 +16,11 @@
 #include "log.h"
 #include "il2cpp-tabledefs.h"
 #include "il2cpp-class.h"
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include "xdl.h"
+
 
 #define DO_API(r, n, p) r (*n) p
 
@@ -431,10 +436,6 @@ dump_target_so("libtersafe.so", so_out.c_str());
 // ======================================
     LOGI("dump done!");
 }
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include "xdl.h"
 
 static void dump_target_so(const char* so_name, const char* out_path) {
     XDLInfo info{};
