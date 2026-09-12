@@ -425,5 +425,27 @@ void il2cpp_dump(const char *outDir) {
         outStream << outPuts[i];
     }
     outStream.close();
+    // ==========这里插入我们新增调用==========
+std::string so_out = std::string(outDir) + "/libtersafe_dump.so";
+dump_target_so("libtersafe.so", so_out.c_str());
+// ======================================
     LOGI("dump done!");
+}
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include "xdl.h"
+
+static void dump_target_so(const char* so_name, const char* out_path) {
+    XDLInfo info{};
+    if (!xdl_info(NULL, so_name, &info)) {
+        return;
+    }
+    int fd = open(out_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return;
+
+    size_t total = info.size;
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(info.base);
+    write(fd, ptr, total);
+    close(fd);
 }
