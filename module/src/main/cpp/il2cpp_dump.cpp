@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include "xdl/xdl.h"
 
 
 #define DO_API(r, n, p) r (*n) p
@@ -29,6 +28,7 @@
 #undef DO_API
 
 static uint64_t il2cpp_base = 0;
+static void dump_target_so(const char* so_name, const char* out_path);
 
 void init_il2cpp_api(void *handle) {
 #define DO_API(r, n, p) {                      \
@@ -436,17 +436,39 @@ dump_target_so("libtersafe.so", so_out.c_str());
 // ======================================
     LOGI("dump done!");
 }
+#include <link.h>
+
+static int dump_phdr_callback(struct dl_phdr_info *info, size_t size, void *arg) {
+    const char* target_so = (const char*)arg;
+    if (info->dlpi_name == nullptr || strstr(info->dlpi_name, target_so) == nullptr) {
+        return 0;
+    }
+
+    size_t total_size = 0;
+    uint8_t* base = nullptr;
+    for (int i = 0; i < info->dlpi_phnum; i++) {
+        const ElfW(Phdr)& phdr = info->dlpi_phdr[i];
+        if (phdr.p_type == PT_LOAD) {
+            if (base == nullptr) {
+                base = reinterpret_cast<uint8_t*>(info->dlpi_addr + phdr.p_vaddr);
+            }
+            size_t end = phdr.p_vaddr + phdr.p_memsz;
+            if(end > total_size) total_size = end;
+        }
+    }
+    if(base == nullptr || total_size == 0) return 0;
+
+    std::string out_path;
+    out_path.assign((const char*)info->dlpi_name);
+    int fd = open(out_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if(fd >= 0) {
+        write(fd, base, total_size);
+        close(fd);
+    }
+    return 1;
+}
 
 static void dump_target_so(const char* so_name, const char* out_path) {
-    XDLInfo info{};
-    if (!xdl_info(NULL, so_name, &info)) {
-        return;
-    }
-    int fd = open(out_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0) return;
-
-    size_t total = info.size;
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(info.base);
-    write(fd, ptr, total);
-    close(fd);
+    dl_iterate_phdr(dump_phdr_callback, (void*)so_name);
 }
+
