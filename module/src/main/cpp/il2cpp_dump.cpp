@@ -19,7 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include "xdl.h"
+#include "xdl/xdl.h"
 
 
 #define DO_API(r, n, p) r (*n) p
